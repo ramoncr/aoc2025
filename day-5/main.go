@@ -36,10 +36,8 @@ func main() {
 }
 
 func readFreshRangesAndProducts() (freshRanges []Range, products []int) {
-	readFile, err := os.Open("./real_input.txt")
-	if err != nil {
-		fmt.Println(err)
-	}
+	readFile, _ := os.Open("./real_input.txt")
+	defer readFile.Close()
 
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)
@@ -66,8 +64,6 @@ func readFreshRangesAndProducts() (freshRanges []Range, products []int) {
 			products = append(products, value)
 		}
 	}
-
-	readFile.Close()
 
 	return freshRanges, products
 }
