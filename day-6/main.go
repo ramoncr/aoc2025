@@ -14,7 +14,6 @@ type Operation func(int, int) int
 
 var operationsMap = map[string]Operation{
 	"+": func(a int, b int) int { return a + b },
-	"-": func(a int, b int) int { return a - b },
 	"*": func(a int, b int) int { return a * b },
 }
 
@@ -23,17 +22,18 @@ func main() {
 	fmt.Println("Advent of Code - Day 6")
 	fmt.Println("=========================")
 	fmt.Println("Reading input contents...")
-	exerciseGrid := readFileContents()
-	exerciseGrid = cleanSpaces(exerciseGrid)
-	_, totalAnswer := calculateAnswers(exerciseGrid)
+	lines := readFileContents()
 
-	fmt.Println("Total value:", totalAnswer)
+	calculations := groupColumns(lines)
+	_, totalSum := calculate(calculations)
+
+	fmt.Println("Total sum:", totalSum)
 
 	elapsed := time.Since(start)
 	fmt.Println("Execution time:", elapsed)
 }
 
-func readFileContents() [][]string {
+func readFileContents() []string {
 	readFile, err := os.Open("real_input.txt")
 	defer readFile.Close()
 
@@ -44,60 +44,82 @@ func readFileContents() [][]string {
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)
 
-	var instructions [][]string
+	var lines []string
 
 	for fileScanner.Scan() {
 		line := fileScanner.Text()
-		instructions = append(instructions, strings.Split(line, " "))
+		lines = append(lines, line)
 	}
 
-	return instructions
+	return lines
 }
 
-func cleanSpaces(input [][]string) [][]string {
-	var result [][]string
+func groupColumns(lines []string) (result [][]string) {
+	line := lines[len(lines)-1]
 
-	for _, line := range input {
-		result = append(result, removeAll(line, " "))
+	var operatorIndexes []int
+
+	for i, char := range line {
+		if char == '*' || char == '+' {
+			operatorIndexes = append(operatorIndexes, i)
+		}
+	}
+
+	for i := 0; i < len(operatorIndexes); i++ {
+		var columnValues []string
+
+		start := operatorIndexes[i]
+
+		end := len(line)
+		if i+1 < len(operatorIndexes) {
+			end = operatorIndexes[i+1]
+		}
+
+		for j := 0; j < len(lines); j++ {
+			number := lines[j][start:end]
+			columnValues = append(columnValues, number)
+		}
+
+		result = append(result, columnValues)
 	}
 
 	return result
 }
 
-func removeAll(s []string, val string) []string {
-	var result []string
-	for _, v := range s {
-		if strings.Trim(v, " ") != "" {
-			result = append(result, v)
+func calculate(calculations [][]string) (result []int, totalSum int) {
+	totalSum = 0
+	for _, calculationLines := range calculations {
+		var numbers []int
+
+		for charIndex := 0; charIndex < len(calculationLines[0]); charIndex++ {
+			var rawNumber string
+
+			// -1 is to avoid including the operator
+			for lineIndex := 0; lineIndex < len(calculationLines)-1; lineIndex++ {
+				rawNumber += string(calculationLines[lineIndex][charIndex])
+			}
+			parsedNumber, _ := strconv.Atoi(strings.Trim(rawNumber, " "))
+			if parsedNumber != 0 {
+				numbers = append(numbers, parsedNumber)
+			}
 		}
+
+		operatorChar := strings.Trim(calculationLines[len(calculationLines)-1], " ")
+		operator := operationsMap[operatorChar]
+
+		lineResult := 0
+		if operatorChar == "*" {
+			lineResult = 1
+		}
+
+		for _, number := range numbers {
+			lineResult = operator(lineResult, number)
+		}
+
+		result = append(result, lineResult)
+		totalSum += lineResult
+
 	}
-	return result
-}
 
-func calculateAnswers(instructions [][]string) ([]int, int) {
-	// Determine amount of calculations
-	amountOfCalculations := len(instructions[0])
-	amountOfInputs := len(instructions) - 1 // last one is instruction
-	var values []int
-	var totalValue int
-
-	for i := 0; i < amountOfCalculations; i++ {
-		var instructionChar = instructions[len(instructions)-1][i]
-		operator := operationsMap[instructionChar]
-
-		calculationValue := 0
-		if instructionChar == "*" {
-			calculationValue = 1
-		}
-
-		for j := 0; j < amountOfInputs; j++ {
-			currentNumber, _ := strconv.Atoi(instructions[j][i])
-			calculationValue = operator(calculationValue, currentNumber)
-		}
-
-		values = append(values, calculationValue)
-		totalValue += calculationValue
-	}
-
-	return values, totalValue
+	return result, totalSum
 }
